@@ -1,0 +1,41 @@
+name: Deploy React App to GitHub Pages (pnpm)
+
+on:
+  push:
+    branches: [master] # 若主分支是 master，需改为 master
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 优化1：安装 pnpm 包管理器（原流程无此步骤）
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3 # pnpm 官方提供的环境安装Action
+        with:
+          version: latest # 使用最新版 pnpm，也可指定版本（如 9.x）
+
+      # 优化2：配置 Node.js + 启用 pnpm 缓存（替代原 npm 缓存）
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x' # 替换为你项目使用的 Node 版本
+          cache: 'pnpm' # 明确指定缓存 pnpm 依赖，加速安装
+          cache-dependency-path: 'pnpm-lock.yaml' # 锁定缓存依赖文件，避免误判
+
+      # 优化3：使用 pnpm 安装依赖（替换原 npm install）
+      - name: Install dependencies
+        run: pnpm install # 若需强制安装依赖，可加 --force 参数
+
+      # 优化4：pnpm 构建命令（与 npm 兼容，若项目脚本一致可直接用）
+      - name: Build project
+        run: pnpm run build # React 项目默认构建脚本，若自定义需同步修改
+
+      # 部署步骤不变，复用原逻辑
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          publish_dir: ./dist # React 默认构建目录，vite 项目需改为 ./dist
+          github_token: ${{ secrets.GITHUB_TOKEN }}
